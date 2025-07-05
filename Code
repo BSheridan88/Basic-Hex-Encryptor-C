@@ -1,0 +1,193 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <conio.h>
+#include <windows.h>
+
+#define UP 72
+#define DOWN 80
+#define ENTER 13
+
+typedef struct secret {
+    char text[256];
+     char password[50];
+    int place;
+    union Hidden_Message{
+        int ints[6];
+        char chars[50];
+    }data;
+     struct secret *next;
+}Message;
+
+void encode(Message *new_message);
+void decode(Message **secret_message,int view);
+void add_message(Message **secret_message);
+void display_messages(Message *secret_message);
+
+void display_messages(Message *secret_message) {
+    Message *current = secret_message;
+    int key;
+    if (secret_message == NULL) {
+        printf("Your List is Empty \n");
+        if (key == ENTER) {
+        system("cls");
+        }
+    }
+    while (current != NULL) {
+        printf("%d. ",current->place);
+        size_t len = strlen(current->text);
+        for (size_t i= 0;i < len ;i++) {
+            printf("%02X",current->text[i]);
+        };
+        printf("\n");
+        current  = current->next;
+    }
+    key = _getch();
+    if (key == ENTER) {
+        system("cls");
+    }
+}
+void add_message(Message **secret_message) { // fix and add when you write the encode part
+    Message *new_message = (Message *)malloc(sizeof(Message));
+    if (new_message == NULL) {
+        printf("Memory allocation error \n");
+        return;
+    }
+    printf("Enter your secret message: \n");
+    fgets(new_message->text,sizeof(new_message->text),stdin);
+    printf("Enter password: \n");
+    fgets(new_message->password,sizeof(new_message->password),stdin);
+    new_message->next = NULL;
+    if (*secret_message == NULL) {
+        *secret_message = new_message;
+        new_message->place = 1;
+        encode(new_message);
+        return;
+    }
+    Message *current = *secret_message;
+    while (current->next != NULL) {
+        current = current->next;
+    }
+    new_message->place = current->place +1;
+    encode(new_message);
+    current->next = new_message;
+}
+void encode(Message *new_message) {
+    memset(new_message->data.chars, 0, sizeof(new_message->data.chars));
+char *input = new_message->text;
+    int j = 0;
+    size_t len = strlen(input);
+    if (input[len - 1] == '\n') {
+        input[len - 1] = '\0';
+        len--;
+    }
+    for (size_t i = 0; i < len; i++) {
+        sprintf(&new_message->data.chars[j], "%02X", (unsigned)input[i]); //combines all encrypted component
+        j += 2;
+    }
+    new_message->data.chars[j] = '\0';
+}
+void decode(Message **secret_message,int view) {
+    Message *current = *secret_message;
+    char temp_password[50];
+    char temp_message[50];
+    int attempts = 0;
+    if (current == NULL) {
+        printf("Message not found \n");
+        return;
+    }
+    while (current->place != view) {
+        current = current->next;
+    }
+    while (attempts < 3) {
+        printf("What is the password: \n");
+        fgets(temp_password,sizeof(temp_password),stdin);
+        if (strcmp(current->password, temp_password)!= 0) {
+            printf("Incorrect password \n");
+            attempts++;
+            if (attempts >= 3) {
+                printf("To many failed attempts \n");
+                exit(1);
+            }
+        }else {
+            break;
+        }
+    }
+    char *input = current->data.chars;
+    size_t len = strlen(input);
+    for (size_t i = 0; i < len;i+=2) {
+        char temp_str[3] = {input[i],input[i+1], '\0'};
+        char c = (char)strtol(temp_str, NULL, 16);
+        temp_message[i/2] = c;
+    }
+    temp_message[len/2] = '\0';
+    printf("Your Secret Message is: %s\n",temp_message);
+
+   // printf("%d. %s \n",current->place,current->data.chars);
+    printf("Press ENTER to return to main menu \n");
+    int key = getchar();
+    if (key == ENTER) {
+        system("cls");
+        encode(current);
+    }
+}
+void print_menu(int current_selection, const char *options[], int num_options) {
+    system("cls");  // clear screen on Windows
+    for (int i = 0; i < num_options; i++) {
+        if (i == current_selection)
+            printf(" > %s\n", options[i]);
+        else
+            printf("   %s\n", options[i]);
+    }
+}
+int main(void) {
+    const char *options[] = {"View", "ADD", "Decode", "Exit"};
+    int num_options = sizeof(options) / sizeof(options[0]);
+    int selection = 0;
+    int key;
+    int view = 0;
+Message *secret_message = NULL;
+    while (1) {
+        print_menu(selection, options, num_options);
+        key = _getch();
+        if (key == 0 || key == 224) {
+            key = _getch();
+            if (key == UP) {
+                selection--;
+                if (selection < 0)
+                    selection = num_options - 1;
+            } else if (key == DOWN) {
+                selection++;
+                if (selection >= num_options)
+                    selection = 0;
+            }
+        } else if (key == ENTER) {
+            system("cls");
+            printf("You selected: %s\n", options[selection]);
+            switch (selection) {
+                case 0:
+                    display_messages(secret_message);
+                    break;
+                case 1:
+                    add_message(&secret_message);
+                    break;
+                case 2:
+                    printf("Which message would you like to see \n");
+                    printf("Displaying all messages \n");
+                    display_messages(secret_message);
+                    scanf("%d",&view);
+                    while (getchar() != '\n');
+                    decode(&secret_message,view);
+                    break;
+                case 3:
+                    return 0;
+                default:
+                    printf("Invalid selection.\n");
+            }
+        }
+    }
+}
+
+
+
+
+
